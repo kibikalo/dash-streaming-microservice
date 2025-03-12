@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  upload-service:
+    build: ./backend/upload-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      - metadata-service
+    environment:
+      - METADATA_SERVICE_URL=http://metadata-service:8082
+      - SPRING_PROFILES_ACTIVE=docker
+
+  metadata-service:
+    build: ./backend/metadata-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - postgres
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/mydatabase
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_PROFILES_ACTIVE=docker
+
+  postgres:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mydatabase
+    ports:
+      - "5432:5432"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"  # RabbitMQ messaging port
+      - "15672:15672"  # Management UI
