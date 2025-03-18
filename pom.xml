@@ -41,14 +41,30 @@
     <properties>
         <java.version>21</java.version>
         <spring.boot.version>3.4.3</spring.boot.version>
+        <maven.compiler.source>21</maven.compiler.source> <!-- Or whatever your Java version is -->
+        <maven.compiler.target>21</maven.compiler.target>
     </properties>
 
     <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.8.1</version> <!-- Use a more up-to-date version of the compiler plugin -->
+                    <configuration>
+                        <source>21</source>
+                        <target>21</target>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>1.18.36</version> <!-- Version matching Lombok dependency -->
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
 </project>
