@@ -1,6 +1,10 @@
 # Use a base image with Java 21 (Spring Boot 3.x requires Java 17+)
 FROM eclipse-temurin:21-jdk
 
+# Install FFmpeg
+RUN apt-get update && apt-get install -y ffmpeg
+RUN ffmpeg -version
+
 # Set working directory
 WORKDIR /app
 
@@ -12,3 +16,4 @@ EXPOSE 8081
 
 # Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
+
