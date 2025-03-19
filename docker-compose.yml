@@ -4,12 +4,13 @@ services:
   upload-service:
     build: ./backend/upload-service
     ports:
-      - "8081:8081"
+      - "8080:8080"
     depends_on:
       - metadata-service
     environment:
       - METADATA_SERVICE_URL=http://metadata-service:8082
       - SPRING_PROFILES_ACTIVE=docker
+      - FFPROBE_PATH=/usr/bin/ffprobe  # Set FFmpeg probe path
 
   metadata-service:
     build: ./backend/metadata-service
