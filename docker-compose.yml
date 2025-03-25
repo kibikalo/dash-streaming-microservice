@@ -1,16 +1,24 @@
 version: '3.8'
 
 services:
+  eureka-server:
+    build: ./backend/discovery-service
+    ports:
+      - "8761:8761"
+    environment:
+      EUREKA_INSTANCE_HOSTNAME: eureka-server
+
   upload-service:
     build: ./backend/upload-service
     ports:
       - "8080:8080"
     depends_on:
-      - metadata-service
+      - eureka-server
     environment:
-      - METADATA_SERVICE_URL=http://metadata-service:8082
       - SPRING_PROFILES_ACTIVE=docker
-      - FFPROBE_PATH=/usr/bin/ffprobe  # Set FFmpeg probe path
+      - FFPROBE_PATH=/usr/bin/ffprobe
+      - "EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/"
+
 
   metadata-service:
     build: ./backend/metadata-service
@@ -18,11 +26,13 @@ services:
       - "8082:8082"
     depends_on:
       - postgres
+      - eureka-server
     environment:
+      - SPRING_PROFILES_ACTIVE=docker
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/metadata-service
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
-      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
 
   postgres:
     image: postgres:15
@@ -33,6 +43,8 @@ services:
       POSTGRES_DB: metadata-service
     ports:
       - "5432:5432"
+    volumes:
+      - ./backend/metadata-service/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   rabbitmq:
     image: rabbitmq:3-management

@@ -11,6 +11,7 @@
     <modules>
         <module>backend/metadata-service</module>
         <module>backend/upload-service</module>
+        <module>backend/discovery-service</module>
     </modules>
 
     <dependencyManagement>
@@ -35,6 +36,14 @@
                 <version>1.18.36</version>
                 <scope>provided</scope>
             </dependency>
+
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>2024.0.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -43,6 +52,7 @@
         <spring.boot.version>3.4.3</spring.boot.version>
         <maven.compiler.source>21</maven.compiler.source> <!-- Or whatever your Java version is -->
         <maven.compiler.target>21</maven.compiler.target>
+        <spring-cloud.version>2024.0.0</spring-cloud.version>
     </properties>
 
     <build>

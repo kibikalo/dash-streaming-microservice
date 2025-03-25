@@ -3,7 +3,6 @@ FROM eclipse-temurin:21-jdk
 
 # Install FFmpeg
 RUN apt-get update && apt-get install -y ffmpeg
-RUN ffmpeg -version
 
 # Set working directory
 WORKDIR /app
