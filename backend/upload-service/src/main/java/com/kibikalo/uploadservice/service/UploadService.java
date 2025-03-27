@@ -1,6 +1,6 @@
 package com.kibikalo.uploadservice.service;
 
-import com.kibikalo.uploadservice.AudioMetadataDto;
+import com.kibikalo.uploadservice.dto.AudioMetadataDto;
 import lombok.AllArgsConstructor;
 import net.bramp.ffmpeg.FFprobe;
 import net.bramp.ffmpeg.probe.FFmpegFormat;
@@ -21,7 +21,7 @@ public class UploadService {
 
     private static final Set<String> ALLOWED_AUDIO_FORMATS = Set.of("audio/mpeg", "audio/wav", "audio/mp4", "audio/aac", "audio/ogg", "audio/flac");
     private final AudioValidationUtil audioValidationUtil;
-
+    private final MetadataServiceClient metadataServiceClient;
 
     // Validate if file is an allowed audio type
     public boolean isValidAudioFile(MultipartFile file) throws IOException {
@@ -42,6 +42,9 @@ public class UploadService {
 
         // Delete temp file
         Files.delete(tempFile.toPath());
+
+        // Send metadata to metadata-service
+        metadataServiceClient.saveMetadata(metadata.getFileHash(), metadata.getFilePath(), metadata.getFileFormat(), metadata.getFileSize(), metadata.getDuration(), metadata.getCodec());
 
         return metadata;
     }
@@ -70,15 +73,14 @@ public class UploadService {
 
             FFmpegFormat format = result.getFormat();
             String fileFormat = file.getContentType();
-            long fileSize = format.size;
+            Long fileSize = format.size;
             int duration = (int) format.duration;
-            String codec = format.format_long_name;
+            String codec = format.format_name;
 
-            return new AudioMetadataDto(fileHash, fileFormat, fileSize, duration, codec);
+            return new AudioMetadataDto(fileHash, "test/test", fileFormat, fileSize, duration, codec);
         } catch (Exception e) {
             System.err.println("Failed to extract metadata: " + e.getMessage());
-            return new AudioMetadataDto(fileHash, file.getContentType(), file.getSize(), 0, "Unknown");
+            return new AudioMetadataDto(fileHash, "test/test", file.getContentType(), file.getSize(), 0, "Unknown");
         }
     }
-
 }

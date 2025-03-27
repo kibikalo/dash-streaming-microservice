@@ -6,5 +6,7 @@ import java.util.Optional;
 
 public interface MetadataRepository extends JpaRepository<Metadata, Long> {
     Optional<Metadata> findByFileHash(String fileHash);
+
+    boolean existsByFileHash(String fileHash);
 }
 

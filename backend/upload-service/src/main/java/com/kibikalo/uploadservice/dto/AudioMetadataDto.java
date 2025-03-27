@@ -1,4 +1,4 @@
-package com.kibikalo.uploadservice;
+package com.kibikalo.uploadservice.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -7,8 +7,9 @@ import lombok.Data;
 @AllArgsConstructor
 public class AudioMetadataDto {
     private String fileHash;
+    private String filePath;
     private String fileFormat;
-    private long fileSize;
+    private Long fileSize;
     private int duration;
     private String codec;
 }

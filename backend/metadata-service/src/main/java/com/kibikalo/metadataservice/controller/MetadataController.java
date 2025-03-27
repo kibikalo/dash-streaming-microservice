@@ -1,16 +1,16 @@
 package com.kibikalo.metadataservice.controller;
 
 import com.kibikalo.metadataservice.model.FileStatus;
-import com.kibikalo.metadataservice.model.Metadata;
 import com.kibikalo.metadataservice.model.MetadataDto;
 import com.kibikalo.metadataservice.model.MetadataMapperUtil;
 import com.kibikalo.metadataservice.service.MetadataService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -22,14 +22,18 @@ public class MetadataController {
     private final MetadataMapperUtil metadataMapperUtil;
 
 
-    @PostMapping
-    public ResponseEntity<MetadataDto> saveMetadata(@RequestBody MetadataDto metadataDTO) {
-        Metadata metadata = metadataMapperUtil.toEntity(metadataDTO);
-        Metadata savedMetadata = metadataService.saveMetadata(metadata);
-        return ResponseEntity.ok(metadataMapperUtil.toDto(savedMetadata));
+    @PostMapping("/save")
+    public ResponseEntity<Void> saveMetadata(@RequestBody Map<String, Object> metadataMap) {
+        try {
+            metadataService.saveMetadataFromMap(metadataMap);
+            return new ResponseEntity<>(HttpStatus.CREATED);
+        } catch (Exception e) {
+            System.err.println("Error saving metadata: " + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
-    // doesn't work yet
+    // TODO Implement getMetadataByHash
     @GetMapping("/file/{fileHash}")
     public ResponseEntity<MetadataDto> getMetadataByFileHash(@PathVariable String fileHash) {
         return metadataService.getMetadataByFileHash(fileHash)
@@ -46,7 +50,7 @@ public class MetadataController {
         return ResponseEntity.ok(metadataList);
     }
 
-    // doesn't work yet
+    // TODO Implement updateFileStatus
     @PatchMapping("/{fileHash}/status")
     public ResponseEntity<MetadataDto> updateFileStatus(@PathVariable String fileHash, @RequestParam("fileStatus") FileStatus fileStatus) {
         return metadataService.updateFileStatus(fileHash, fileStatus)
@@ -56,4 +60,3 @@ public class MetadataController {
     }
 
 }
-
