@@ -1,0 +1,16 @@
+server:
+  port: 8081
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE}
+    should-unregister-on-shutdown: true
+
+spring:
+  application:
+    name: storage-service
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
