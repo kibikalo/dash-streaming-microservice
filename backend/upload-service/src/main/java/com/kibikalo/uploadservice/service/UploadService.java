@@ -1,86 +1,98 @@
 package com.kibikalo.uploadservice.service;
 
-import com.kibikalo.uploadservice.dto.AudioMetadataDto;
-import lombok.AllArgsConstructor;
-import net.bramp.ffmpeg.FFprobe;
-import net.bramp.ffmpeg.probe.FFmpegFormat;
-import net.bramp.ffmpeg.probe.FFmpegProbeResult;
+import java.io.InputStream;
+import java.time.Instant;
+import java.util.UUID;
+
+import com.kibikalo.uploadservice.event.AudioUploadedEvent;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Set;
+import io.minio.MinioClient;
+import io.minio.PutObjectArgs;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
+@Slf4j
 public class UploadService {
 
-    private static final Set<String> ALLOWED_AUDIO_FORMATS = Set.of("audio/mpeg", "audio/wav", "audio/mp4", "audio/aac", "audio/ogg", "audio/flac");
-    private final AudioValidationUtil audioValidationUtil;
-    private final MetadataServiceClient metadataServiceClient;
+    private final MinioClient minioClient;
+    private final KafkaTemplate<String, AudioUploadedEvent> kafkaTemplate;
 
-    // Validate if file is an allowed audio type
-    public boolean isValidAudioFile(MultipartFile file) throws IOException {
-        return audioValidationUtil.isValidAudioFile(file);
-    }
+    @Value("${app.minio.bucket.raw}")
+    private String rawBucketName;
 
-    // Process the file: generate hash, extract metadata
-    public AudioMetadataDto processFile(MultipartFile file) throws IOException {
-        // Generate unique file hash
-        String fileHash = generateFileHash(file);
+    @Value("${app.kafka.topic.audio-uploaded}")
+    private String audioUploadedTopic;
 
-        // Save the file temporarily to extract metadata
-        File tempFile = File.createTempFile("audio_", null);
-        file.transferTo(tempFile);
-
-        // Extract metadata
-        AudioMetadataDto metadata = extractMetadata(fileHash, file, tempFile);
-
-        // Delete temp file
-        Files.delete(tempFile.toPath());
-
-        // Send metadata to metadata-service
-        metadataServiceClient.saveMetadata(metadata.getFileHash(), metadata.getFilePath(), metadata.getFileFormat(), metadata.getFileSize(), metadata.getDuration(), metadata.getCodec());
-
-        return metadata;
-    }
-
-    // Generate a unique hash for the file
-    private String generateFileHash(MultipartFile file) throws IOException {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] fileBytes = file.getBytes();
-            byte[] hashBytes = digest.digest(fileBytes);
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hashBytes) {
-                hexString.append(Integer.toHexString(0xFF & b));
-            }
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IOException("Hashing algorithm not found", e);
+    public String uploadAudio(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty or null");
         }
-    }
 
-    // Extract audio metadata
-    public AudioMetadataDto extractMetadata(String fileHash, MultipartFile file, File tempFile) {
-        try {
-            FFprobe ffprobe = new FFprobe("/usr/bin/ffprobe");
-            FFmpegProbeResult result = ffprobe.probe(tempFile.getAbsolutePath());
+        String originalFileName = StringUtils.cleanPath(
+                file.getOriginalFilename() != null
+                        ? file.getOriginalFilename()
+                        : "unknown"
+        );
+        String audioId = UUID.randomUUID().toString();
+        // Define path structure in MinIO: raw-audio/{audioId}/{originalFileName}
+        String objectName = String.format("raw-audio/%s/%s", audioId, originalFileName);
 
-            FFmpegFormat format = result.getFormat();
-            String fileFormat = file.getContentType();
-            Long fileSize = format.size;
-            int duration = (int) format.duration;
-            String codec = format.format_name;
+        try (InputStream inputStream = file.getInputStream()) {
+            log.info(
+                    "Uploading file '{}' to MinIO bucket '{}' as '{}'",
+                    originalFileName,
+                    rawBucketName,
+                    objectName
+            );
 
-            return new AudioMetadataDto(fileHash, "test/test", fileFormat, fileSize, duration, codec);
+            // Upload file to MinIO
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(rawBucketName)
+                            .object(objectName)
+                            .stream(inputStream, file.getSize(), -1) // -1 part size for auto
+                            .contentType(file.getContentType()) // Store content type
+                            .build()
+            );
+
+            log.info("File uploaded successfully to MinIO: {}", objectName);
+
+            // Create event payload
+            AudioUploadedEvent event = new AudioUploadedEvent(
+                    audioId,
+                    objectName, // Use the MinIO object path
+                    originalFileName,
+                    Instant.now()
+            );
+
+            // Publish event to Kafka
+            // Use audioId as the key for partitioning (optional but good practice)
+            kafkaTemplate.send(audioUploadedTopic, audioId, event);
+            log.info(
+                    "Published AudioUploadedEvent for audioId: {} to topic: {}",
+                    audioId,
+                    audioUploadedTopic
+            );
+
+            return audioId; // Return the generated ID
+
         } catch (Exception e) {
-            System.err.println("Failed to extract metadata: " + e.getMessage());
-            return new AudioMetadataDto(fileHash, "test/test", file.getContentType(), file.getSize(), 0, "Unknown");
+            log.error(
+                    "Error uploading file '{}' or publishing event: {}",
+                    originalFileName,
+                    e.getMessage(),
+                    e
+            );
+            // Consider specific exception handling (MinIO vs Kafka vs IO)
+            // You might want to implement cleanup logic here (e.g., delete from MinIO if Kafka fails)
+            throw new RuntimeException("Failed to process audio upload", e);
         }
     }
 }

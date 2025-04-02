@@ -1,6 +1,57 @@
 version: '3.8'
 
 services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0 # Use a specific version
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0 # Use a specific version
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092" # External port for clients like your services
+      - "29092:29092" # Internal port for Kafka itself
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      # Listeners configuration:
+      # - LISTENER_INTERNAL: Used for communication between brokers (if you had more than one) and Zookeeper.
+      # - LISTENER_EXTERNAL: Used for clients connecting from outside the Docker network (e.g., your Spring apps).
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_INTERNAL:PLAINTEXT,LISTENER_EXTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_INTERNAL://kafka:29092,LISTENER_EXTERNAL://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1 # For single-node setup
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0 # Optional: speeds up consumer joining in dev
+
+  akhq:
+    image: tchiotludo/akhq:latest # Use a specific version tag in production
+    container_name: akhq
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            docker-kafka-cluster: # You can name this connection anything
+              properties:
+                # IMPORTANT: Use the internal Kafka listener name and port
+                bootstrap.servers: "kafka:29092"
+              # Optional: Add Schema Registry or Connect config if you use them later
+              # schema-registry:
+              #   url: "http://schema-registry:8081"
+              # connect:
+              #   - name: connect-cluster
+              #     url: "http://kafka-connect:8083"
+    ports:
+      - "8083:8080" # Map host port 8083 to container port 8080
+    depends_on:
+      - kafka # Ensure Kafka starts before AKHQ tries to connect
+
   eureka-server:
     build: ./backend/discovery-service
     ports:
@@ -14,11 +65,19 @@ services:
       - "8080:8080"
     depends_on:
       - eureka-server
+      - minio
+      - kafka
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - FFPROBE_PATH=/usr/bin/ffprobe
       - "EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/"
-
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    # ---
+      - MINIO_URL=http://minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET_RAW=raw-audio
+    # ---
+      - FFPROBE_PATH=/usr/bin/ffprobe
 
   metadata-service:
     build: ./backend/metadata-service
@@ -27,11 +86,14 @@ services:
     depends_on:
       - postgres
       - eureka-server
+      - kafka
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/metadata-service
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
+    # ---
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
 
   postgres:
@@ -46,32 +108,33 @@ services:
     volumes:
       - ./backend/metadata-service/init.sql:/docker-entrypoint-initdb.d/init.sql
 
-  storage-service:
-    build:
-      context: ./backend/storage-service
-      dockerfile: Dockerfile
-    container_name: storage-service
-    ports:
-      - "8081:8081"
+  pgadmin:
+    image: dpage/pgadmin4:latest # Use a specific version tag in production
+    container_name: pgadmin
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80" # Map host port 5050 to pgAdmin container port 80
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin # Persist pgAdmin configuration/servers
     depends_on:
-      - eureka-server
+      - postgres # Ensure postgres starts before pgAdmin
+    restart: unless-stopped
 
   minio:
     image: minio/minio
     container_name: minio
     ports:
       - "9000:9000"
-      - "9001:9001"  # For the MinIO console (dashboard)
+      - "9001:9001"  # Dashboard
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data # Persist MinIO data
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    ports:
-      - "5672:5672"
-      - "15672:15672"  # Management UI
+volumes:
+  minio_data:
+  pgadmin_data:

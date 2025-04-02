@@ -13,7 +13,6 @@
         <module>backend/metadata-service</module>
         <module>backend/upload-service</module>
         <module>backend/discovery-service</module>
-        <module>backend/storage-service</module>
     </modules>
 
     <dependencyManagement>

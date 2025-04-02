@@ -1,9 +1,59 @@
+server:
+  port: 8082
+
 spring:
+  application:
+    name: metadata-service
+  # Datasource Config (can be overridden by docker-compose env vars)
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/metadata-service}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update # Use 'validate' in production after initial setup
+    show-sql: true # For debugging, disable in production
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  # Kafka Consumer/Producer settings
+  kafka:
+    # Default for producer/client (keep this)
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092} # Explicitly set for consumer
+      group-id: metadata-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.kibikalo.metadataservice.event,com.kibikalo.uploadservice.event"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.kibikalo.metadataservice.event.incoming.AudioUploadedEvent
+    producer:
+      # Producer settings (these are fine, will inherit from top level)
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+# Eureka client config (can be overridden by docker-compose env vars)
 eureka:
   client:
     serviceUrl:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE}
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+# Custom App Properties
+app:
+  kafka:
+    topic:
+      encoding-requested: encoding.requested # Topic name for encoding requests
+
+logging:
+  level:
+    root: INFO
+    com.kibikalo.metadataservice: DEBUG
+    org.hibernate.SQL: DEBUG # Log SQL statements
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE # Log SQL parameters

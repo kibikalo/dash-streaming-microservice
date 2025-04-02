@@ -1,24 +1,59 @@
 server:
   port: 8082
 
-eureka:
-  client:
-    serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
-
 spring:
   application:
     name: metadata-service
+  # Datasource Config (can be overridden by docker-compose env vars)
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/metadata-service}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: update # Use 'validate' in production after initial setup
+    show-sql: true # For debugging, disable in production
     properties:
       hibernate:
-        format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  # Kafka Consumer/Producer settings
+  kafka:
+    # Use kafka:29092 when running in Docker via docker-compose
+    # Use localhost:9092 if running service locally connecting to Docker Kafka
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: metadata-service-group # Unique group ID for this consumer
+      auto-offset-reset: earliest # Start reading from beginning if no offset found
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        # Trust packages for JSON deserialization
+        spring.json.trusted.packages: "com.kibikalo.metadataservice.event,com.kibikalo.uploadservice.event" # Add packages for ALL events consumed/produced
+        spring.json.use.type.headers: false # Assume type info is not in headers
+        spring.json.value.default.type: com.kibikalo.metadataservice.event.incoming.AudioUploadedEvent # Specify default type for value
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
-datasource:
-  url: jdbc:postgresql://localhost:5432/streaming-service-metadata
-  username: postgres
-  password: root
+# Eureka client config (can be overridden by docker-compose env vars)
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+# Custom App Properties
+app:
+  kafka:
+    topic:
+      encoding-requested: encoding.requested # Topic name for encoding requests
+
+logging:
+  level:
+    root: INFO
+    com.kibikalo.metadataservice: DEBUG
+    org.hibernate.SQL: DEBUG # Log SQL statements
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE # Log SQL parameters

@@ -1,4 +1,45 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: upload-service
+  # Kafka Producer settings
+  kafka:
+    producer:
+      # Use kafka:29092 when running in Docker via docker-compose
+      # Use localhost:9092 if running service locally connecting to Docker Kafka
+      bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # Use JSON serializer for the event payload
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+  servlet:
+    multipart:
+      max-file-size: 50MB # Adjust as needed
+      max-request-size: 50MB # Adjust as needed
+
+# Eureka client config (can be overridden by docker-compose env vars)
 eureka:
   client:
     serviceUrl:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE}
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true # Useful in Docker environments
+
+# Custom App Properties
+app:
+  kafka:
+    topic:
+      audio-uploaded: audio.uploaded # Topic name for upload events
+  minio:
+    url: ${MINIO_URL:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    bucket:
+      raw: ${MINIO_BUCKET_RAW:raw-audio} # Bucket for raw uploads
+
+logging:
+  level:
+    root: INFO
+    com.yourpackage.uploadservice: DEBUG # Your base package
+    io.minio: WARN # Reduce MinIO client chattiness if needed
