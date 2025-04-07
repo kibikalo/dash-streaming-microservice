@@ -29,9 +29,9 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "com.kibikalo.metadataservice.event,com.kibikalo.uploadservice.event"
+        spring.json.trusted.packages: "com.kibikalo.shared.events,*"
         spring.json.use.type.headers: false
-        spring.json.value.default.type: com.kibikalo.metadataservice.event.incoming.AudioUploadedEvent
+        spring.json.value.default.type: com.kibikalo.shared.events.AudioUploadedEvent
     producer:
       # Producer settings (these are fine, will inherit from top level)
       key-serializer: org.apache.kafka.common.serialization.StringSerializer

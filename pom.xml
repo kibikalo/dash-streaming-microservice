@@ -9,10 +9,11 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>backend/common</module>
+        <module>backend/encoding-service</module>
         <module>backend/metadata-service</module>
         <module>backend/upload-service</module>
         <module>backend/discovery-service</module>
+        <module>backend/shared-library</module>
     </modules>
 
     <dependencyManagement>
@@ -44,6 +45,12 @@
                 <version>2024.0.0</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>shared-library</artifactId>
+                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -20,20 +20,20 @@ spring:
         format_sql: true
   # Kafka Consumer/Producer settings
   kafka:
-    # Use kafka:29092 when running in Docker via docker-compose
-    # Use localhost:9092 if running service locally connecting to Docker Kafka
+    # Default for producer/client (keep this)
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
-      group-id: metadata-service-group # Unique group ID for this consumer
-      auto-offset-reset: earliest # Start reading from beginning if no offset found
+      bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092} # Explicitly set for consumer
+      group-id: metadata-service-group
+      auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        # Trust packages for JSON deserialization
-        spring.json.trusted.packages: "com.kibikalo.metadataservice.event,com.kibikalo.uploadservice.event" # Add packages for ALL events consumed/produced
-        spring.json.use.type.headers: false # Assume type info is not in headers
-        spring.json.value.default.type: com.kibikalo.metadataservice.event.incoming.AudioUploadedEvent # Specify default type for value
+        spring.json.trusted.packages: "com.kibikalo.shared.events,*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.kibikalo.shared.events.AudioUploadedEvent
     producer:
+      # Producer settings (these are fine, will inherit from top level)
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 

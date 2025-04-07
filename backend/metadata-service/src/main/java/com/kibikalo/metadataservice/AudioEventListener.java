@@ -1,10 +1,12 @@
 package com.kibikalo.metadataservice;
 
-import com.kibikalo.metadataservice.event.incoming.AudioUploadedEvent;
 import com.kibikalo.metadataservice.model.AudioMetadata;
 import com.kibikalo.metadataservice.model.AudioStatus;
-import com.kibikalo.metadataservice.event.outgoing.EncodingRequestedEvent;
 import com.kibikalo.metadataservice.repo.AudioMetadataRepository;
+import com.kibikalo.shared.events.AudioUploadedEvent;
+import com.kibikalo.shared.events.EncodingFailedEvent;
+import com.kibikalo.shared.events.EncodingRequestedEvent;
+import com.kibikalo.shared.events.EncodingSucceededEvent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -28,6 +30,8 @@ public class AudioEventListener {
 
     // Define the topic name directly or load from properties
     private static final String UPLOAD_TOPIC = "audio.uploaded";
+    private static final String ENCODING_SUCCEEDED_TOPIC = "encoding.succeeded";
+    private static final String ENCODING_FAILED_TOPIC = "encoding.failed";
 
     @KafkaListener(
             topics = UPLOAD_TOPIC,
@@ -36,7 +40,7 @@ public class AudioEventListener {
             // containerFactory = "kafkaListenerContainerFactory"
             // Specify the type for the JsonDeserializer
             properties = {
-                    "spring.json.value.default.type=com.kibikalo.metadataservice.event.incoming.AudioUploadedEvent" }
+                    "spring.json.value.default.type=com.kibikalo.shared.events.AudioUploadedEvent" }
     )
     @Transactional // Make DB save and Kafka publish atomic (within this service)
     public void handleAudioUploadedEvent(@Payload AudioUploadedEvent event) {
@@ -66,8 +70,7 @@ public class AudioEventListener {
             AudioMetadata metadata = new AudioMetadata(
                     event.getAudioId(),
                     event.getOriginalFileName(),
-                    event.getRawFilePath(),
-                    AudioStatus.PENDING_ENCODING // Initial status
+                    event.getRawFilePath()
             );
             metadataRepository.save(metadata);
             log.info(
@@ -108,5 +111,57 @@ public class AudioEventListener {
                     e
             );
         }
+    }
+
+    @KafkaListener(
+            topics = ENCODING_SUCCEEDED_TOPIC,
+            groupId = "${spring.kafka.consumer.group-id}",
+            properties = {
+                    "spring.json.value.default.type=com.kibikalo.shared.events.EncodingSucceededEvent" }
+    )
+    @Transactional
+    public void handleEncodingSucceededEvent(@Payload EncodingSucceededEvent event) {
+        log.info("Received EncodingSucceededEvent for audioId: {}", event.getAudioId());
+
+        metadataRepository.findById(event.getAudioId()).ifPresentOrElse(metadata -> {
+            log.info("Updating metadata for successful encoding: {}", event.getAudioId());
+            metadata.setManifestPath(event.getManifestPath());
+            metadata.setSegmentBasePath(event.getSegmentBasePath());
+            metadata.setDurationMillis(event.getDurationMillis());
+            metadata.setBitratesKbps(event.getBitratesKbps());
+            metadata.setCodec(event.getCodec());
+            metadata.setEncodingTimestamp(event.getEncodingTimestamp());
+            metadata.setRawFileSize(event.getRawFileSize());
+            metadata.setRawFileFormat(event.getRawFileFormat());
+            metadata.setStatus(AudioStatus.AVAILABLE); // Set status to AVAILABLE
+            metadataRepository.save(metadata);
+            log.info("Metadata updated successfully for audioId: {}", event.getAudioId());
+        }, () -> {
+            log.warn("Received EncodingSucceededEvent for unknown audioId: {}. Cannot update metadata.", event.getAudioId());
+            // Consider creating metadata here if it makes sense for your flow, or DLQ
+        });
+    }
+
+    @KafkaListener(
+            topics = ENCODING_FAILED_TOPIC,
+            groupId = "${spring.kafka.consumer.group-id}",
+            properties = {
+                    "spring.json.value.default.type=com.kibikalo.shared.events.EncodingFailedEvent" }
+    )
+    @Transactional
+    public void handleEncodingFailedEvent(@Payload EncodingFailedEvent event) {
+        log.warn("Received EncodingFailedEvent for audioId: {}. Reason: {}", event.getAudioId(), event.getErrorMessage());
+
+        metadataRepository.findById(event.getAudioId()).ifPresentOrElse(metadata -> {
+            log.info("Updating metadata for failed encoding: {}", event.getAudioId());
+            metadata.setStatus(AudioStatus.FAILED_ENCODING); // Set status to FAILED_ENCODING
+            // Optionally store error message if you add a field for it
+            // metadata.setEncodingError(event.getErrorMessage());
+            metadataRepository.save(metadata);
+            log.info("Metadata status updated to FAILED_ENCODING for audioId: {}", event.getAudioId());
+        }, () -> {
+            log.warn("Received EncodingFailedEvent for unknown audioId: {}. Cannot update metadata.", event.getAudioId());
+            // Consider creating metadata here or DLQ
+        });
     }
 }

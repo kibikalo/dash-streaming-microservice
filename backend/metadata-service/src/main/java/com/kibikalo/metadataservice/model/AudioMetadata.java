@@ -6,6 +6,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
+import java.util.List;
 
 @Entity
 @Table(name = "audio_metadata")
@@ -25,15 +26,26 @@ public class AudioMetadata {
     @Column(nullable = false)
     private AudioStatus status;
 
+    @Column(nullable = false, length = 1024)
     private String rawFilePath;
 
-    private String fileFormat;
+    @Column(length = 1024)
+    private String manifestPath;
 
-    private Long fileSize;      // Size in bytes
+    @Column(length = 1024)
+    private String segmentBasePath;
+
+    private String rawFileFormat;
+
+    private Long rawFileSize;
 
     private Long durationMillis;
 
     private String codec;
+
+    @ElementCollection(fetch = FetchType.EAGER) // Store list as separate table or array
+    @CollectionTable(name = "audio_bitrates", joinColumns = @JoinColumn(name = "audio_id"))
+    private List<Integer> bitratesKbps;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
@@ -43,15 +55,16 @@ public class AudioMetadata {
     @Column(nullable = false)
     private Instant updatedAt;
 
+    private Instant encodingTimestamp;
+
     public AudioMetadata(
             String id,
             String originalFileName,
-            String rawFilePath,
-            AudioStatus status
+            String rawFilePath
     ) {
         this.id = id;
         this.originalFileName = originalFileName;
         this.rawFilePath = rawFilePath;
-        this.status = status;
+        this.status = AudioStatus.PENDING_ENCODING;
     }
 }

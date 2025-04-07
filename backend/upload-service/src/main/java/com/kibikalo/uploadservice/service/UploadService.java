@@ -4,7 +4,7 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.util.UUID;
 
-import com.kibikalo.uploadservice.event.AudioUploadedEvent;
+import com.kibikalo.shared.events.AudioUploadedEvent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;

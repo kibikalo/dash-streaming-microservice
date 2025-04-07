@@ -1,20 +1,18 @@
-package com.kibikalo.metadataservice.event.incoming;
-
-import java.time.Instant;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+package com.kibikalo.shared.events;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class AudioUploadedEvent {
     private String audioId;
     private String rawFilePath;
     private String originalFileName;
     private Instant uploadTimestamp;
 }
+

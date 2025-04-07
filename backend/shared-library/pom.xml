@@ -12,12 +12,8 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>common</artifactId>
-    <version>1.0.0</version>
-    <name>common library</name>
-    <packaging>jar</packaging>
-
-
+    <artifactId>shared-library</artifactId>
+    <name>shared-library</name>
 
     <dependencies>
         <dependency>
