@@ -1,0 +1,67 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: encoding-service
+  # Kafka Consumer/Producer settings
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092} # Explicitly set
+      group-id: encoding-service-group # Unique group ID
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        # Trust packages for JSON deserialization (adjust package name)
+        spring.json.trusted.packages: "com.kibikalo.shared.events,*"
+        spring.json.use.type.headers: false
+        # Default type for the consumer if type info is missing
+        spring.json.value.default.type: com.kibikalo.shared.events.EncodingRequestedEvent
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+# Eureka client config
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+# Custom App Properties
+app:
+  minio:
+    url: ${MINIO_URL:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    bucket:
+      raw: ${MINIO_BUCKET_RAW:raw-audio}
+      processed: ${MINIO_BUCKET_PROCESSED:processed-audio} # Bucket for encoded files
+  kafka:
+    topic:
+      encoding-requested: encoding.requested # Consuming from this topic
+      encoding-succeeded: encoding.succeeded # Producing to this topic
+      encoding-failed: encoding.failed       # Producing to this topic
+  ffmpeg:
+    path: ${FFMPEG_PATH:/usr/bin/ffmpeg} # Path to ffmpeg executable inside container
+  encoding:
+    # Define desired output bitrates in kbps (comma-separated)
+    # Example: 64k and 128k AAC streams
+    bitrates-kbps: ${ENCODING_BITRATES_KBPS:64,96,128}
+    segment-duration-seconds: 4 # Duration of each DASH segment
+    codec: libopus # Target audio codec
+
+management: # Optional: Actuator endpoints
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    root: INFO
+    com.yourcompany.encodingservice: DEBUG # Your base package
+    io.minio: WARN

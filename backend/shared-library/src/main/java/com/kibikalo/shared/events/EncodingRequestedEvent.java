@@ -1,4 +1,4 @@
-package com.kibikalo.metadataservice.event.outgoing;
+package com.kibikalo.shared.events;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
