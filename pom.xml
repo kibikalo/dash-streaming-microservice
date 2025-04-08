@@ -9,6 +9,7 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>backend/streaming-service</module>
         <module>backend/encoding-service</module>
         <module>backend/metadata-service</module>
         <module>backend/upload-service</module>
