@@ -128,20 +128,21 @@ public class EncodingService {
             log.info("FFmpeg encoding completed successfully for {}", audioId);
 
             // 4. Upload processed files (manifest + segments) to MinIO
-            String minioBaseDir = "processed-audio/" + audioId + "/";
-            uploadDirectoryToMinio(tempOutputDir, processedBucket, minioBaseDir, tempInputFile);
+            String relativeBaseDir = audioId + "/";
+            String minioUploadPrefix = "processed-audio/" + relativeBaseDir;
+            uploadDirectoryToMinio(tempOutputDir, processedBucket, minioUploadPrefix, tempInputFile);
             log.info(
                     "Uploaded encoded files to MinIO bucket '{}' prefix '{}'",
                     processedBucket,
-                    minioBaseDir
+                    minioUploadPrefix
             );
 
             // 5. Publish Success Event
-            String manifestPath = minioBaseDir + manifestName;
+            String relativeManifestPath = relativeBaseDir + manifestName;
             EncodingSucceededEvent successEvent = new EncodingSucceededEvent(
                     audioId,
-                    manifestPath,
-                    minioBaseDir, // Base path for segments
+                    relativeManifestPath, // Send relative path
+                    relativeBaseDir, // Base path for segments
                     ffmpegService.getLastDurationMillis(), // Get duration parsed by FFmpegService
                     bitrates,
                     targetCodec,
@@ -202,7 +203,7 @@ public class EncodingService {
     private void uploadDirectoryToMinio(
             Path sourceDirectory,
             String bucket,
-            String prefix,
+            String fullUploadPrefix,
             Path tempInputFileToExclude
     ) throws IOException {
         try (Stream<Path> stream = Files.walk(sourceDirectory, 1)) { // Walk only top-level files
@@ -218,7 +219,7 @@ public class EncodingService {
             }
 
             for (Path filePath : filesToUpload) {
-                String objectName = prefix + filePath.getFileName().toString();
+                String objectName = fullUploadPrefix + filePath.getFileName().toString();
                 log.debug(
                         "Uploading {} to MinIO as {}",
                         filePath.getFileName(),
