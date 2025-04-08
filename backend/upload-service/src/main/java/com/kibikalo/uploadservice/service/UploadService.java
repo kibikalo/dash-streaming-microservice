@@ -41,33 +41,40 @@ public class UploadService {
                         : "unknown"
         );
         String audioId = UUID.randomUUID().toString();
-        // Define path structure in MinIO: raw-audio/{audioId}/{originalFileName}
-        String objectName = String.format("raw-audio/%s/%s", audioId, originalFileName);
+
+        // --- Define RELATIVE object name ---
+        String relativeObjectName = String.format("%s/%s", audioId, originalFileName);
+// ---------------------------------
 
         try (InputStream inputStream = file.getInputStream()) {
             log.info(
                     "Uploading file '{}' to MinIO bucket '{}' as '{}'",
                     originalFileName,
-                    rawBucketName,
-                    objectName
+                    rawBucketName, // Use the bucket name variable
+                    relativeObjectName // Use the relative object name
             );
 
             // Upload file to MinIO
+            log.info("--- UPLOAD DEBUG ---");
+            log.info("Using Bucket Name: '{}'", rawBucketName); // Log the bucket name value
+            log.info("Using Object Key : '{}'", relativeObjectName); // Log the object key value
+            log.info("Target Full Path (Expected): {}/{}", rawBucketName, relativeObjectName);
+            log.info("Uploading file '{}' to MinIO...", originalFileName);
             minioClient.putObject(
                     PutObjectArgs.builder()
-                            .bucket(rawBucketName)
-                            .object(objectName)
+                            .bucket(rawBucketName) // Specify bucket
+                            .object(relativeObjectName) // Specify RELATIVE object key
                             .stream(inputStream, file.getSize(), -1) // -1 part size for auto
                             .contentType(file.getContentType()) // Store content type
                             .build()
             );
 
-            log.info("File uploaded successfully to MinIO: {}", objectName);
+            log.info("File uploaded successfully to MinIO: {}", relativeObjectName);
 
-            // Create event payload
+            // Create event payload (use the RELATIVE path)
             AudioUploadedEvent event = new AudioUploadedEvent(
                     audioId,
-                    objectName, // Use the MinIO object path
+                    relativeObjectName, // Use the relative path for the event
                     originalFileName,
                     Instant.now()
             );

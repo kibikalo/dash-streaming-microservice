@@ -70,6 +70,14 @@ public class StreamingService {
             throw new RuntimeException("Failed to prepare streaming URL for ID: " + audioId);
         }
 
+        // Construct simple public URL
+//        String baseUrl = minioExternalBaseUrl.endsWith("/") ? minioExternalBaseUrl : minioExternalBaseUrl + "/";
+//        String bucket = processedBucket + "/";
+//        String objectPath = metadata.getManifestPath().startsWith("/") ? metadata.getManifestPath().substring(1) : metadata.getManifestPath();
+//
+//        String directUrl = baseUrl + bucket + objectPath;
+//        log.info("Constructed direct public URL for audioId {}: {}", audioId, directUrl);
+//        return directUrl;
     }
 
     private String generatePresignedUrl(String objectName) throws Exception {

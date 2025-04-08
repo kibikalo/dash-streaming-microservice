@@ -131,16 +131,17 @@ services:
     depends_on:
       - eureka-server
       - metadata-service
-#      - minio
+      - minio
     environment:
-#      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-#      - MINIO_EXTERNAL_URL=http://localhost:9000
-      - MINIO_URL=http://minio:9000
+      # --------------------------
+      #      - MINIO_EXTERNAL_URL=http://localhost:9000
+      - MINIO_URL=http://localhost:9000
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
+      # --------------------------
       - MINIO_BUCKET_PROCESSED=processed-audio
-#       Optional: Override expiry via env var
       - MINIO_PRESIGNED_EXPIRY=600 # 10 minutes
     restart: unless-stopped
 
@@ -175,15 +176,23 @@ services:
     image: minio/minio
     container_name: minio
     ports:
-      - "9000:9000"
       - "9001:9001"  # Dashboard
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-#      MINIO_SERVER_URL: http://localhost:9000
+      MINIO_SERVER_URL: http://localhost:9000
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data # Persist MinIO data
+
+  nginx-proxy:
+    build: ./nginx
+    container_name: nginx-proxy
+    ports:
+      - "9000:80" # Map HOST port 9000 to Nginx CONTAINER port 80
+    depends_on:
+      - minio
+    restart: unless-stopped
 
 volumes:
   minio_data:

@@ -24,6 +24,7 @@ app:
     # Duration for pre-signed URLs (e.g., 5 minutes)
     presigned-url-expiry-seconds: ${MINIO_PRESIGNED_EXPIRY:300}
 #    external-base-url: ${MINIO_EXTERNAL_URL:http://localhost:9000}
+    base-url: ${MINIO_URL:http://localhost:9000}
   # Service name used by Feign to find Metadata Service via Eureka
   metadata-service-name: ${METADATA_SERVICE_NAME:metadata-service}
 

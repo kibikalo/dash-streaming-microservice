@@ -75,11 +75,6 @@ public class FFmpegService {
         command.add("-media_seg_name");
         command.add("chunk-stream$RepresentationID$-$Number%05d$.m4s"); // No extra quotes needed
 
-        // --- CHANGE: Remove adaptation sets ---
-        // command.add("-adaptation_sets");
-        // command.add("a=0");
-        // --------------------------------------
-
         // --- CHANGE: Add strict experimental ---
         command.add("-strict");
         command.add("experimental"); // Or "-2"

@@ -23,10 +23,16 @@ public class MinioConfig {
     @Bean
     public MinioClient minioClient() {
         log.info("Initializing MinIO client for endpoint: {}", minioUrl);
-        return MinioClient.builder()
-                .endpoint(minioUrl)
-                .credentials(accessKey, secretKey)
-                .region("us-east-1")
-                .build();
+        try {
+            // The endpoint used here influences signature generation
+            return MinioClient.builder()
+                    .endpoint(minioUrl) // Should be http://localhost:9000
+                    .credentials(accessKey, secretKey)
+                    .region("us-east-1") // Optional
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to build MinIO client: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to initialize MinIO client", e);
+        }
     }
 }
