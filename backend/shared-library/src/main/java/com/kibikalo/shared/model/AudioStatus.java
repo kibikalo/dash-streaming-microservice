@@ -1,4 +1,4 @@
-package com.kibikalo.metadataservice.model;
+package com.kibikalo.shared.model;
 
 public enum AudioStatus {
     PENDING_ENCODING, // Initial state after upload received

@@ -1,5 +1,6 @@
 package com.kibikalo.metadataservice.model;
 
+import com.kibikalo.shared.model.AudioStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

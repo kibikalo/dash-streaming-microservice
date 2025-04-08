@@ -1,12 +1,12 @@
 package com.kibikalo.metadataservice;
 
 import com.kibikalo.metadataservice.model.AudioMetadata;
-import com.kibikalo.metadataservice.model.AudioStatus;
 import com.kibikalo.metadataservice.repo.AudioMetadataRepository;
 import com.kibikalo.shared.events.AudioUploadedEvent;
 import com.kibikalo.shared.events.EncodingFailedEvent;
 import com.kibikalo.shared.events.EncodingRequestedEvent;
 import com.kibikalo.shared.events.EncodingSucceededEvent;
+import com.kibikalo.shared.model.AudioStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;

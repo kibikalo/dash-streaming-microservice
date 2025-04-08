@@ -8,7 +8,7 @@
 		<groupId>com.kibikalo</groupId>
 		<artifactId>dash-streaming-backend</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
-		<relativePath>../../pom.xml</relativePath>  <!-- Points to backend/pom.xml -->
+		<relativePath>../../pom.xml</relativePath>
 	</parent>
 
 	<artifactId>upload-service</artifactId>
