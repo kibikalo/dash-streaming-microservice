@@ -1,4 +1,4 @@
-package com.kibikalo.encodingservice;
+package com.kibikalo.encodingservice.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

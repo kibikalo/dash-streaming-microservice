@@ -44,12 +44,12 @@ public class FFmpegService {
         command.add("-i");
         command.add(inputFile.toAbsolutePath().toString());
 
-        // --- CHANGE: Add explicit map for EACH bitrate ---
+        // Map specific input audio stream (0:a:0) for EACH output
         for (int i = 0; i < bitratesKbps.size(); i++) {
             command.add("-map");
-            command.add("0:a"); // Map input audio for each output representation
+            // Assuming the first audio stream in the input is the one we want
+            command.add("0:a:0");
         }
-        // -------------------------------------------------
 
         // Add representations for each bitrate
         for (int i = 0; i < bitratesKbps.size(); i++) {
@@ -75,10 +75,13 @@ public class FFmpegService {
         command.add("-media_seg_name");
         command.add("chunk-stream$RepresentationID$-$Number%05d$.m4s"); // No extra quotes needed
 
-        // --- CHANGE: Add strict experimental ---
+        // Force all mapped audio streams into ONE adaptation set
+        command.add("-adaptation_sets");
+        command.add("id=0,streams=a"); // Group all audio ('a') streams into set '0'
+
+        // Add strict experimental
         command.add("-strict");
         command.add("experimental"); // Or "-2"
-        // ---------------------------------------
 
         // Output manifest file path
         command.add(
