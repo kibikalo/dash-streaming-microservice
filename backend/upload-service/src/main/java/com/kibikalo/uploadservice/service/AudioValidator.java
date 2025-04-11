@@ -24,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 public class AudioValidator {
 
     private static final Set<String> SUPPORTED_FORMATS = new HashSet<>(Arrays.asList(
-            "Wave", "MP3", "FLAC", "Ogg Vorbis", "MP4"
+            "Wave", "Wav", "MP3", "FLAC", "Ogg Vorbis", "MP4"
     ));
 
     private static final int MIN_DURATION_SECONDS = 1;

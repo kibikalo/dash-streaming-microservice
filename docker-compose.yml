@@ -178,16 +178,26 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-      MINIO_SERVER_URL: http://localhost:9000
-    command: >
-      sh -c "/usr/bin/docker-entrypoint.sh server /data --console-address :9001 &
-             /init/initialize-minio.sh &&
-             wait $${!}"
+    # MINIO_SERVER_URL: http://localhost:9000
+    entrypoint: /bin/sh # Override entrypoint to use shell directly
+    command: >          # Command arguments passed to the entrypoint (sh)
+      -c "
+      echo 'Starting MinIO Server in background...' &&
+      /usr/bin/docker-entrypoint.sh server /data --console-address :9001 &
+      SERVER_PID=$$! &&
+      echo 'MinIO Server PID: $$SERVER_PID' &&
+      echo 'Running initialization script...' &&
+      /init/initialize-minio.sh &&
+      echo 'Initialization script finished. Waiting for server process...' &&
+      wait $$SERVER_PID &&
+      echo 'MinIO Server process exited.'
+      "
+    # ------------------------------------
     volumes:
-      - minio_data:/data # Persist MinIO data
+      - minio_data:/data
       - ./minio-init:/init
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
       timeout: 20s
       retries: 3
