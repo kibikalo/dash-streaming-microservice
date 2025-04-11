@@ -50,11 +50,10 @@
 			<scope>test</scope>
 		</dependency>
 
-
 		<dependency>
-			<groupId>net.bramp.ffmpeg</groupId>
-			<artifactId>ffmpeg</artifactId>
-			<version>0.8.0</version>
+			<groupId>net.jthink</groupId>
+			<artifactId>jaudiotagger</artifactId>
+			<version>3.0.1</version>
 		</dependency>
 
 		<dependency>

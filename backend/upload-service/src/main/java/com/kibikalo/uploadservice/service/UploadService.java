@@ -23,6 +23,7 @@ public class UploadService {
 
     private final MinioClient minioClient;
     private final KafkaTemplate<String, AudioUploadedEvent> kafkaTemplate;
+    private final AudioValidator audioValidator;
 
     @Value("${app.minio.bucket.raw}")
     private String rawBucketName;
@@ -31,9 +32,16 @@ public class UploadService {
     private String audioUploadedTopic;
 
     public String uploadAudio(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("File is empty or null");
+        log.info("Received upload request for file: {}", file.getOriginalFilename());
+
+        // Step 1: Validate the File
+        AudioValidationResult validationResult = audioValidator.validate(file);
+        if (!validationResult.isValid()) {
+            log.warn("Audio validation failed for file [{}]: {}", file.getOriginalFilename(), validationResult.getMessage());
+            throw new IllegalArgumentException("Audio validation failed: " + validationResult.getMessage());
         }
+        log.info("Audio validation passed for file [{}]. Format: {}, Duration: {}s",
+                file.getOriginalFilename(), validationResult.getFormat(), validationResult.getDurationSeconds());
 
         String originalFileName = StringUtils.cleanPath(
                 file.getOriginalFilename() != null
@@ -44,7 +52,6 @@ public class UploadService {
 
         // --- Define RELATIVE object name ---
         String relativeObjectName = String.format("%s/%s", audioId, originalFileName);
-// ---------------------------------
 
         try (InputStream inputStream = file.getInputStream()) {
             log.info(
@@ -54,7 +61,7 @@ public class UploadService {
                     relativeObjectName // Use the relative object name
             );
 
-            // Upload file to MinIO
+            // Step 2: Upload file to MinIO
             log.info("--- UPLOAD DEBUG ---");
             log.info("Using Bucket Name: '{}'", rawBucketName); // Log the bucket name value
             log.info("Using Object Key : '{}'", relativeObjectName); // Log the object key value
@@ -71,7 +78,7 @@ public class UploadService {
 
             log.info("File uploaded successfully to MinIO: {}", relativeObjectName);
 
-            // Create event payload (use the RELATIVE path)
+            // Step 3: Create event payload (use the RELATIVE path)
             AudioUploadedEvent event = new AudioUploadedEvent(
                     audioId,
                     relativeObjectName, // Use the relative path for the event
@@ -98,7 +105,6 @@ public class UploadService {
                     e
             );
             // Consider specific exception handling (MinIO vs Kafka vs IO)
-            // You might want to implement cleanup logic here (e.g., delete from MinIO if Kafka fails)
             throw new RuntimeException("Failed to process audio upload", e);
         }
     }

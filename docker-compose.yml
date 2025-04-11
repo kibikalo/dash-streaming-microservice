@@ -78,8 +78,6 @@ services:
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
       - MINIO_BUCKET_RAW=raw-audio
-    # ---
-      - FFPROBE_PATH=/usr/bin/ffprobe
 
   metadata-service:
     build: ./backend/metadata-service
@@ -181,9 +179,18 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
       MINIO_SERVER_URL: http://localhost:9000
-    command: server /data --console-address ":9001"
+    command: >
+      sh -c "/usr/bin/docker-entrypoint.sh server /data --console-address :9001 &
+             /init/initialize-minio.sh &&
+             wait $${!}"
     volumes:
       - minio_data:/data # Persist MinIO data
+      - ./minio-init:/init
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
   nginx-proxy:
     build: ./nginx
